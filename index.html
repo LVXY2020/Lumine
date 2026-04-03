@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国道512线 TJ-03标段 - 施工数据管理系统</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; font-size: 24px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        
+        /* Tab 标签页样式 */
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; color: #7f8c8d; }
+        .tab-btn.active { color: #2980b9; border-bottom: 3px solid #2980b9; margin-bottom: -2px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 表单样式 */
+        .form-group { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: #e8f4f8; padding: 15px; border-radius: 6px; border: 1px solid #d4e6f1; }
+        .form-item { flex: 1; min-width: 150px; display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #2c3e50; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background-color: #2980b9; }
+        .btn-export { background-color: #27ae60; margin-bottom: 10px; float: right; }
+        .btn-export:hover { background-color: #219653; }
+        .btn-danger { background-color: #e74c3c; float: left; margin-bottom: 10px;}
+        .btn-danger:hover { background-color: #c0392b; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+
+        /* 表格样式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #34495e; color: white; position: sticky; top: 0; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f8ff; }
+        .text-red { color: #e74c3c; font-weight: bold; }
+        .text-green { color: #27ae60; font-weight: bold; }
+        
+        .table-container { max-height: 600px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>国道512线 TJ-03标段 - 施工数据管理系统</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('entryTab', this)">📝 每日填报流水</button>
+        <button class="tab-btn" onclick="switchTab('summaryTab', this)">📊 全线进度汇总台账</button>
+    </div>
+
+    <div id="entryTab" class="tab-content active">
+        <div class="form-group" id="entryForm">
+            <div class="form-item"><label>施工日期</label><input type="date" id="dateInput" required></div>
+            <div class="form-item"><label>起讫桩号</label><input type="text" id="startStation" placeholder="如: K29+050~K29+150" required></div>
+            <div class="form-item">
+                <label>工程大类</label>
+                <select id="categorySelect" onchange="updateItems()">
+                    <option value="">-- 请选择大类 --</option>
+                    </select>
+            </div>
+            <div class="form-item">
+                <label>细分工序</label>
+                <select id="itemSelect" onchange="updateUnit()" required>
+                    <option value="">-- 请先选择大类 --</option>
+                </select>
+            </div>
+            <div class="form-item">
+                <label>今日完成量 (<span id="unitDisplay" class="text-red">单位</span>)</label>
+                <input type="number" id="qtyInput" step="0.01" placeholder="填入数字" required>
+            </div>
+            <div class="form-item" style="justify-content: flex-end;">
+                <button onclick="addData()">+ 录入并保存到本地</button>
+            </div>
+        </div>
+
+        <div class="clearfix">
+            <button class="btn-danger" onclick="clearData()">⚠️ 清空本地所有数据</button>
+            <button class="btn-export" onclick="exportExcel('dataTable', '施工流水报表')">⬇️ 导出流水 Excel</button>
+        </div>
+        
+        <div class="table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr><th>序号</th><th>日期</th><th>起讫桩号</th><th>工程大类</th><th>细分工序</th><th>完成数量</th><th>单位</th><th>录入时间</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="summaryTab" class="tab-content">
+        <div class="clearfix">
+            <button class="btn-export" onclick="exportExcel('summaryTable', '工程量汇总台账')">⬇️ 导出台账 Excel</button>
+        </div>
+        <div class="table-container">
+            <table id="summaryTable">
+                <thead>
+                    <tr><th>工程大类</th><th>细分工序</th><th>单位</th><th>图纸设计总量</th><th>累计已完成</th><th>剩余工程量</th><th>进度 %</th></tr>
+                </thead>
+                <tbody id="summaryBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. 底层标准数据库（包含图纸总量）严格对照字典版
+    const projectDict = {
+        "1. 路基及处理工程": [
+            { name: "清表数量", unit: "m³", total: 9032.2 },
+            { name: "填前碾压 / 碾压面积", unit: "m²", total: 39631 },
+            { name: "清表后压实亏方土方 / 压实亏方", unit: "m³", total: 2480.4 },
+            { name: "翻挖土方", unit: "m³", total: 2425 },
+            { name: "回填土方", unit: "m³", total: 16308.5 },
+            { name: "回填砂砾", unit: "m³", total: 222.3 },
+            { name: "开挖台阶", unit: "m²", total: 10612.6 },
+            { name: "挖除旧路沥青砼", unit: "m³", total: 36.7 },
+            { name: "挖除旧路水稳料", unit: "m³", total: 220 },
+            { name: "挖除旧路土方", unit: "m³", total: 3972.2 },
+            { name: "旧路边坡清除表土", unit: "m³", total: 2326.3 },
+            { name: "回填未筛分碎石 / 减少借方", unit: "m³", total: 17893.9 },
+            { name: "土工格栅", unit: "m²", total: 7720 },
+            { name: "U型钉", unit: "kg", total: 1250.4 },
+            { name: "液压夯", unit: "1000m²", total: 13.045 },
+            { name: "未筛分碎石封层 (厚度20cm)", unit: "m³ / 1000m²", total: 21302.6 }
+        ],
+        "2. 路基防护工程": [
+            { name: "回填种植土", unit: "m³", total: 3897.4 },
+            { name: "沙柳网格植草 / 植草面积", unit: "m²", total: 24519.7 },
+            { name: "草籽", unit: "kg", total: 90.6 },
+            { name: "沙柳", unit: "kg", total: 90585 },
+            { name: "开挖土方 / 挖基土方", unit: "m³", total: 4243.7 },
+            { name: "C25现浇混凝土 / C25混凝土", unit: "m³", total: 2715.4 },
+            { name: "C25预制混凝土", unit: "m³", total: 110.5 },
+            { name: "M10浆砌片石", unit: "m³", total: 108 },
+            { name: "未筛分碎石垫层 / 基底换填未筛分碎石", unit: "m³", total: 550.7 },
+            { name: "未筛分碎石反滤层", unit: "m³", total: 432.5 },
+            { name: "护栏预埋套筒", unit: "kg", total: 3861.9 },
+            { name: "护栏预埋钢底板", unit: "kg", total: 480 },
+            { name: "Φ10cm PVC排水管", unit: "m", total: 487.2 }
+        ],
+        "3. 路面及加宽工程": [
+            { name: "挖除沥青面层", unit: "m³", total: 1532.6 },
+            { name: "挖除水稳基层", unit: "m³", total: 8444.8 },
+            { name: "AC-16C型改性沥青上面层 (4cm/5cm)", unit: "1000m²", total: 141.887 },
+            { name: "粘层", unit: "1000m²", total: 141.887 },
+            { name: "AC-20C型改性沥青下面层 (6cm)", unit: "1000m²", total: 141.887 },
+            { name: "ES-2稀浆封层", unit: "1000m²", total: 149.060 },
+            { name: "透层", unit: "1000m²", total: 149.060 },
+            { name: "(5:95)水泥稳定碎石基层 (20cm)", unit: "1000m²", total: 149.060 },
+            { name: "(4:96)水泥稳定碎石底基层 (20cm)", unit: "1000m²", total: 107.421 },
+            { name: "4%及5%水泥稳定碎石底基层/调平层", unit: "1000m²", total: 8.400 },
+            { name: "I / II / III型路肩板预制安装", unit: "m³", total: 2408 },
+            { name: "路肩未筛分碎石 (15cm/35cm/天然)", unit: "m³", total: 3974.2 }
+        ],
+        "4. 排水及附属工程": [
+            { name: "开挖土方 (边沟及急流槽)", unit: "m³", total: 1850.7 },
+            { name: "C30预制钢筋砼盖板", unit: "m³", total: 305.3 },
+            { name: "未筛分碎石垫层", unit: "m³", total: 344 },
+            { name: "C25现浇砼", unit: "m³", total: 1343.3 },
+            { name: "HRB400钢筋", unit: "kg", total: 46333.9 },
+            { name: "沥青麻絮", unit: "m²", total: 0.6 },
+            { name: "C25混凝土拦水带", unit: "m³", total: null },
+            { name: "占地", unit: "亩", total: 0.06 }
+        ],
+        "5. 拆除工程": [
+            { name: "拆除旧桥涵钢筋砼 / 混凝土", unit: "m³", total: 3194 },
+            { name: "拆除旧桥涵浆砌片石", unit: "m³", total: 235 },
+            { name: "拆除石砌护坡", unit: "m³", total: 240 },
+            { name: "拆除圆管涵管节 (各管径合计)", unit: "m", total: 225.5 }
+        ],
+        "6. 桥梁工程": [
+            { name: "钻孔灌注桩成孔 (按地质/管径)", unit: "m", total: 2532 },
+            { name: "C30水下混凝土 (桩基)", unit: "m³", total: 2710 },
+            { name: "C30混凝土 (承台/台帽/墩柱)", unit: "m³", total: 332 },
+            { name: "C40混凝土 (支座垫石/挡块/护栏)", unit: "m³", total: 1223 },
+            { name: "C50预制及现浇混凝土 (箱梁)", unit: "m³", total: 2676 },
+            { name: "C50钢纤维混凝土", unit: "m³", total: 18 },
+            { name: "HRB400钢筋 (桥梁各部位合计)", unit: "kg", total: 1128866 },
+            { name: "HPB300钢筋 (桥梁各部位合计)", unit: "kg", total: 49326 },
+            { name: "钢绞线", unit: "kg", total: 95151 },
+            { name: "金属波纹管 (d=55mm)", unit: "m", total: 18820 },
+            { name: "锚具 (M15-4 / M15-5)", unit: "套", total: 1626 },
+            { name: "桥梁支座 (GPZ系列各型号)", unit: "套", total: 69 },
+            { name: "桥面伸缩缝 (160型/80型)", unit: "m", total: 60 },
+            { name: "桥面防水层", unit: "m²", total: 5357 },
+            { name: "桥面沥青混凝土", unit: "m³", total: 482 },
+            { name: "声测管 (各管径合计)", unit: "kg", total: 25409 },
+            { name: "泄水管及配件 (含铸铁/PVC/管件)", unit: "套/m/kg", total: null },
+            { name: "锥坡开挖 / 桥台挖方", unit: "m³", total: 1215 },
+            { name: "锥坡C25砼护坡及基础", unit: "m³", total: 966 },
+            { name: "锥坡未筛分碎石 (垫层/填筑)", unit: "m³", total: 2466 },
+            { name: "聚丙烯纤维 / 玻纤格栅", unit: "kg", total: 493 },
+            { name: "橡胶垫块 / 油毛毡 / 土工布", unit: "dm³/m²/m²", total: null }
+        ],
+        "7. 涵洞工程": [
+            { name: "涵洞干挖 / 清理土方", unit: "m³", total: 268.8 },
+            { name: "基底换填未筛分碎石", unit: "m³", total: 51 },
+            { name: "未筛分碎石垫层", unit: "m³", total: 17.5 },
+            { name: "C30混凝土 (涵身/基础/铺砌)", unit: "m³", total: 107.7 },
+            { name: "C40混凝土 (现浇明板)", unit: "m³", total: 10.1 },
+            { name: "涵洞受力钢筋 (HRB400等合计)", unit: "kg", total: 4922 },
+            { name: "1cm厚橡胶垫", unit: "m²", total: 9.1 },
+            { name: "支座锚栓 (Φ25)", unit: "kg", total: null }
+        ]
+    };
+
+    // 2. 本地数据初始化 (从 localStorage 读取)
+    let dataList = JSON.parse(localStorage.getItem('tj03_data')) || [];
+    let recordId = dataList.length > 0 ? Math.max(...dataList.map(d => d.id)) + 1 : 1;
+
+    // 页面加载完毕执行初始化
+    window.onload = function() {
+        document.getElementById('dateInput').valueAsDate = new Date();
+        initCategorySelect();
+        renderTable();
+        renderSummary();
+    };
+
+    // 3. Tab 切换逻辑
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+        if(tabId === 'summaryTab') renderSummary(); // 切换到台账时重新计算
+    }
+
+    // 4. 级联菜单初始化
+    function initCategorySelect() {
+        const catSelect = document.getElementById("categorySelect");
+        for(let key in projectDict) {
+            let opt = document.createElement("option");
+            opt.value = key; opt.textContent = key;
+            catSelect.appendChild(opt);
+        }
+    }
+
+    function updateItems() {
+        const category = document.getElementById("categorySelect").value;
+        const itemSelect = document.getElementById("itemSelect");
+        itemSelect.innerHTML = '<option value="">-- 请选择工序 --</option>';
+        if (category && projectDict[category]) {
+            projectDict[category].forEach(item => {
+                let opt = document.createElement("option");
+                opt.value = item.name; opt.textContent = item.name;
+                opt.setAttribute("data-unit", item.unit);
+                itemSelect.appendChild(opt);
+            });
+        }
+        document.getElementById("unitDisplay").textContent = "单位";
+    }
+
+    function updateUnit() {
+        const itemSelect = document.getElementById("itemSelect");
+        const selectedOpt = itemSelect.options[itemSelect.selectedIndex];
+        document.getElementById("unitDisplay").textContent = selectedOpt ? selectedOpt.getAttribute("data-unit") : "单位";
+    }
+
+    // 5. 增删查改逻辑
+    function addData() {
+        const date = document.getElementById("dateInput").value;
+        const station = document.getElementById("startStation").value;
+        const category = document.getElementById("categorySelect").value;
+        const itemSelect = document.getElementById("itemSelect");
+        const item = itemSelect.value;
+        const qty = parseFloat(document.getElementById("qtyInput").value);
+        const unit = itemSelect.options[itemSelect.selectedIndex]?.getAttribute("data-unit");
+
+        if (!date || !station || !category || !item || isNaN(qty)) {
+            alert("请完整正确填写施工数据！"); return;
+        }
+
+        dataList.push({ id: recordId++, date, station, category, item, qty: qty, unit, timestamp: new Date().toLocaleTimeString() });
+        
+        // 核心：持久化保存到浏览器本地
+        localStorage.setItem('tj03_data', JSON.stringify(dataList));
+        
+        document.getElementById("qtyInput").value = ""; 
+        renderTable();
+        renderSummary(); // 同时更新后台账
+        alert("录入成功！数据已保存在本地。");
+    }
+
+    function clearData() {
+        if(confirm("危险操作：这会清空您浏览器中记录的所有流水数据，无法恢复！确定清空吗？")) {
+            localStorage.removeItem('tj03_data');
+            dataList = [];
+            recordId = 1;
+            renderTable();
+            renderSummary();
+        }
+    }
+
+    // 6. 渲染表格视图
+    function renderTable() {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = ""; 
+        // 倒序展示，最新的在上面
+        [...dataList].reverse().forEach(row => {
+            tbody.innerHTML += `<tr><td>${row.id}</td><td>${row.date}</td><td>${row.station}</td><td>${row.category}</td><td>${row.item}</td><td class="text-green">${row.qty.toFixed(2)}</td><td>${row.unit}</td><td>${row.timestamp}</td></tr>`;
+        });
+    }
+
+    // 7. 渲染汇总台账 (后台自动算账核心引擎)
+    function renderSummary() {
+        const tbody = document.getElementById("summaryBody");
+        tbody.innerHTML = "";
+        
+        for (let category in projectDict) {
+            projectDict[category].forEach(dictItem => {
+                // 计算当前工序已完成的累加和
+                let completedSum = dataList
+                    .filter(data => data.item === dictItem.name)
+                    .reduce((sum, data) => sum + parseFloat(data.qty), 0);
+                
+                let totalStr = dictItem.total !== null ? dictItem.total : "待定";
+                let remainStr = dictItem.total !== null ? (dictItem.total - completedSum).toFixed(2) : "-";
+                let percentStr = dictItem.total !== null && dictItem.total > 0 ? ((completedSum / dictItem.total) * 100).toFixed(1) + "%" : "-";
+                
+                // 预警色：如果剩余为负数（超了），变红
+                let remainClass = dictItem.total !== null && (dictItem.total - completedSum) < 0 ? "text-red" : "";
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${category}</td>
+                        <td style="text-align:left;">${dictItem.name}</td>
+                        <td>${dictItem.unit}</td>
+                        <td style="font-weight:bold;">${totalStr}</td>
+                        <td class="text-green">${completedSum.toFixed(2)}</td>
+                        <td class="${remainClass}">${remainStr}</td>
+                        <td>${percentStr}</td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+    // 8. 导出功能
+    function exportExcel(tableId, fileNameBase) {
+        let tableElement = document.getElementById(tableId);
+        let workbook = XLSX.utils.table_to_book(tableElement, {sheet: "Data"});
+        let today = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(workbook, `G512_TJ03_${fileNameBase}_${today}.xlsx`);
+    }
+</script>
+
+</body>
+</html>
