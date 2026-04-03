@@ -261,7 +261,7 @@
 
     // 3. 清空联动：本地删完后直接建议同步数据库
     async function clearData() {
-        if(prompt("输入密码888888执行清库操作") === "888888") {
+        if(prompt("输入密码执行清库操作") === "888888") {
             dataList = [];
             localStorage.removeItem('tj03_data');
             renderTable(); renderSummary();
