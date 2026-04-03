@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>国道512线 TJ-03标段 - 自动同步系统</title>
+    <title>国道512线 TJ-03标段 - 无感云同步系统</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <style>
-        /* 保持简洁专业的 UI */
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; font-size: 24px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
@@ -22,7 +21,6 @@
         button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-export { background-color: #27ae60; float: right; margin-left: 10px; }
         .btn-danger { background-color: #e74c3c; float: left; }
-        .btn-cloud-up { background-color: #8e44ad; float: left; margin-left: 10px; }
         .clearfix::after { content: ""; clear: both; display: table; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
@@ -31,12 +29,13 @@
         .text-red { color: #e74c3c; font-weight: bold; }
         .text-green { color: #27ae60; font-weight: bold; }
         .table-container { max-height: 600px; overflow-y: auto; }
+        #syncStatus { float: right; font-size: 12px; color: #7f8c8d; line-height: 35px; margin-right: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>国道512线 TJ-03标段 - 施工云同步管理系统</h1>
+    <h1>国道512线 TJ-03标段 - 施工数据云管理系统</h1>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('entryTab', this)">📝 每日填报流水</button>
@@ -50,14 +49,13 @@
             <div class="form-item"><label>工程大类</label><select id="categorySelect" onchange="updateItems()"></select></div>
             <div class="form-item"><label>细分工序</label><select id="itemSelect" onchange="updateUnit()"></select></div>
             <div class="form-item"><label>今日完成量 (<span id="unitDisplay" class="text-red">单位</span>)</label><input type="number" id="qtyInput"></div>
-            <div class="form-item" style="justify-content: flex-end;"><button onclick="addData()">+ 录入</button></div>
+            <div class="form-item" style="justify-content: flex-end;"><button onclick="addData()">+ 录入并自动云同步</button></div>
         </div>
 
         <div class="clearfix" style="margin-bottom:10px;">
-            <button class="btn-danger" onclick="clearData()">⚠️ 清空本地数据</button>
-            <button id="cloudBtn" class="btn-cloud-up" onclick="saveToCloud()">⬆️ 备份数据至云端</button>
-            <button class="btn-export" onclick="exportExcel('dataTable', '施工流水')">⬇️ 导出 Excel</button>
-            <span id="syncStatus" style="float:right; font-size:12px; color:#7f8c8d; line-height:35px; margin-right:10px;">☁️ 云端同步检查中...</span>
+            <button class="btn-danger" onclick="clearData()">⚠️ 清空数据</button>
+            <button class="btn-export" onclick="exportExcel('dataTable', '施工流水')">⬇️ 导出流水 Excel</button>
+            <span id="syncStatus">☁️ 云端对账中...</span>
         </div>
         
         <div class="table-container">
@@ -83,12 +81,12 @@
     const GITHUB_REPO = "Lumine";    
     const FILE_PATH = "tj03_data.json"; 
 
-    // 核心工程字典
+    // 标准字典（保持严谨）
     const projectDict = {
         "1. 路基及处理工程": [
             { name: "清表数量", unit: "m³", total: 9032.2 },
             { name: "填前碾压 / 碾压面积", unit: "m²", total: 39631 },
-            { name: "清表后压实亏方土方 / 压实亏方", unit: "m³", total: 2480.4 },
+            { name: "清表后压实亏方土方 /压实亏方", unit: "m³", total: 2480.4 },
             { name: "翻挖土方", unit: "m³", total: 2425 },
             { name: "回填土方", unit: "m³", total: 16308.5 },
             { name: "回填砂砾", unit: "m³", total: 222.3 },
@@ -163,7 +161,7 @@
             { name: "桥梁支座 (GPZ系列各型号)", unit: "套", total: 69 },
             { name: "桥面伸缩缝 (160型/80型)", unit: "m", total: 60 },
             { name: "桥面防水层", unit: "m²", total: 5357 },
-            { name: "桥面沥青混凝土", unit: "m³", total: 482 },
+            { name: "桥面沥清混凝土", unit: "m³", total: 482 },
             { name: "声测管 (各管径合计)", unit: "kg", total: 25409 },
             { name: "泄水管及配件 (含铸铁/PVC/管件)", unit: "套/m/kg", total: null },
             { name: "锥坡开挖 / 桥台挖方", unit: "m³", total: 1215 },
@@ -192,16 +190,15 @@
         initCategorySelect();
         renderTable();
         renderSummary();
-        // 🌟 核心修改：网页加载后自动感应云端
-        autoSyncFromCloud();
+        autoSyncFromCloud(); // 网页一开，自动拉取
     };
 
-    // 🌟 自动化对账逻辑：无需按钮，自动感应
+    // 🌟 全自动对账：感应云端是否有更新
     async function autoSyncFromCloud() {
         const token = localStorage.getItem('github_token');
         const statusEl = document.getElementById('syncStatus');
         if(!token) {
-            statusEl.textContent = "☁️ 未配置云端同步。";
+            statusEl.innerHTML = "☁️ 首次使用请录入一条数据以激活云同步";
             return;
         }
 
@@ -211,38 +208,33 @@
             if(res.ok) {
                 const json = await res.json();
                 const cloudData = JSON.parse(decodeURIComponent(escape(atob(json.content))));
-                
-                // 对账：如果云端数据比本地多，说明有更新
                 if(cloudData.length > dataList.length) {
-                    if(confirm(`发现云端有更新（云端${cloudData.length}条 > 本地${dataList.length}条），是否同步至最新状态？`)) {
+                    if(confirm(`发现云端有更新（云端${cloudData.length} > 本地${dataList.length}），是否同步？`)) {
                         dataList = cloudData;
                         localStorage.setItem('tj03_data', JSON.stringify(dataList));
-                        recordId = dataList.length > 0 ? Math.max(...dataList.map(d => d.id)) + 1 : 1;
-                        renderTable();
-                        renderSummary();
-                        statusEl.textContent = "✅ 已同步至云端最新。";
-                    } else {
-                        statusEl.textContent = "⚠️ 本地数据落后于云端。";
+                        recordId = Math.max(...dataList.map(d => d.id)) + 1;
+                        renderTable(); renderSummary();
+                        statusEl.textContent = "✅ 已同步最新状态";
                     }
-                } else {
-                    statusEl.textContent = "✅ 本地数据与云端同步。";
-                }
+                } else { statusEl.textContent = "✅ 数据已是最新"; }
             }
-        } catch (e) {
-            statusEl.textContent = "❌ 云端连接失败。";
-        }
+        } catch (e) { statusEl.textContent = "❌ 云端连接异常"; }
     }
 
-    // 保存到云端（保留手动触发备份，确保填报完成才提交）
-    async function saveToCloud() {
-        if(dataList.length === 0) { alert("无数据备份"); return; }
-        let token = localStorage.getItem('github_token') || prompt("请输入 GitHub Token：");
-        if(!token) return;
+    // 🌟 全自动备份：录入即上传
+    async function autoSaveToCloud() {
+        const statusEl = document.getElementById('syncStatus');
+        let token = localStorage.getItem('github_token');
+        if(!token) {
+            token = prompt("☁️ 系统将自动备份至云端，请输入一次 GitHub Token：");
+            if(!token) return;
+            localStorage.setItem('github_token', token);
+        }
 
+        statusEl.textContent = "⏳ 正在自动同步云端...";
         const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
         const content = btoa(unescape(encodeURIComponent(JSON.stringify(dataList, null, 2))));
         
-        document.getElementById('cloudBtn').innerText = "⏳ 正在备份...";
         try {
             let sha = "";
             const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
@@ -251,19 +243,33 @@
             const putRes = await fetch(url, {
                 method: "PUT",
                 headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Sync", content: content, sha: sha })
+                body: JSON.stringify({ message: "AutoSync", content: content, sha: sha })
             });
 
-            if(putRes.ok) {
-                localStorage.setItem('github_token', token);
-                alert("✅ 备份成功！");
-                document.getElementById('syncStatus').textContent = "✅ 已成功备份至云端。";
-            }
-        } catch (e) { alert("网络异常"); }
-        document.getElementById('cloudBtn').innerText = "⬆️ 备份数据至云端";
+            if(putRes.ok) { statusEl.textContent = "✅ 云端已同步保存"; }
+            else { statusEl.textContent = "❌ 云端保存失败（Token权限？）"; }
+        } catch (e) { statusEl.textContent = "❌ 网络故障，待下次同步"; }
     }
 
-    // --- 基础渲染逻辑保持不变 ---
+    function addData() {
+        const d = document.getElementById("dateInput").value;
+        const s = document.getElementById("startStation").value;
+        const c = document.getElementById("categorySelect").value;
+        const i = document.getElementById("itemSelect").value;
+        const q = parseFloat(document.getElementById("qtyInput").value);
+        const u = document.getElementById("unitDisplay").textContent;
+        if(!d || isNaN(q)) { alert("请完善填报内容"); return; }
+
+        dataList.push({ id: recordId++, date: d, station: s, category: c, item: i, qty: q, unit: u, timestamp: new Date().toLocaleTimeString() });
+        localStorage.setItem('tj03_data', JSON.stringify(dataList));
+        document.getElementById("qtyInput").value = "";
+        renderTable(); renderSummary();
+        
+        // 录入后直接触发静默云同步
+        autoSaveToCloud(); 
+    }
+
+    // --- 以下为渲染及工具代码 ---
     function initCategorySelect() {
         const cat = document.getElementById("categorySelect");
         for(let k in projectDict) { cat.innerHTML += `<option value="${k}">${k}</option>`; }
@@ -279,20 +285,6 @@
     function updateUnit() {
         const u = document.getElementById("itemSelect").options[document.getElementById("itemSelect").selectedIndex]?.getAttribute("data-unit");
         document.getElementById("unitDisplay").textContent = u || "单位";
-    }
-    function addData() {
-        const d = document.getElementById("dateInput").value;
-        const s = document.getElementById("startStation").value;
-        const c = document.getElementById("categorySelect").value;
-        const i = document.getElementById("itemSelect").value;
-        const q = parseFloat(document.getElementById("qtyInput").value);
-        const u = document.getElementById("unitDisplay").textContent;
-        if(!d || !q) { alert("请完善信息"); return; }
-        dataList.push({ id: recordId++, date: d, station: s, category: c, item: i, qty: q, unit: u, timestamp: new Date().toLocaleTimeString() });
-        localStorage.setItem('tj03_data', JSON.stringify(dataList));
-        document.getElementById("qtyInput").value = "";
-        renderTable();
-        renderSummary();
     }
     function renderTable() {
         const b = document.getElementById("tableBody");
@@ -323,7 +315,7 @@
         XLSX.writeFile(wb, `${name}_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
     function clearData() {
-        if(prompt("输入密码888888清空") === "888888") {
+        if(prompt("请输入密码 888888 清空本地所有缓存") === "888888") {
             localStorage.removeItem('tj03_data');
             dataList = []; recordId = 1; renderTable(); renderSummary();
         }
