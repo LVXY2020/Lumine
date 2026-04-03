@@ -358,37 +358,54 @@
     }
 
     // 8. GitHub 云端同步模块
+    // 优化后的云端同步函数：增加“记住我”逻辑
     async function saveToCloud() {
         if (dataList.length === 0) {
             alert("没有数据可以上传！"); return;
         }
 
-        // 核心安全机制：弹出 Token 输入框，不在代码中泄露
-        const userToken = prompt("☁️ 数据将同步至 GitHub 仓库。\n请输入您的 Personal Access Token 进行身份验证：\n(如取消则不上传)");
-        if (!userToken) return;
+        // 1. 先尝试从本地缓存读取 Token
+        let userToken = localStorage.getItem('github_token');
+
+        // 2. 如果本地没存过，或者 Token 失效了，再弹窗问
+        if (!userToken) {
+            userToken = prompt("☁️ 首次同步需验证身份。\n请输入您的 GitHub Token (ghp_开头的长字符串)：");
+            if (!userToken) return;
+            
+            // 询问是否需要记住，方便下次使用
+            if (confirm("是否在本地记住此通行证？\n(记住后，下次备份将不再询问)")) {
+                localStorage.setItem('github_token', userToken);
+            }
+        }
 
         const button = document.getElementById('cloudBtn');
-        button.innerText = "⏳ 正在上传至云端...";
+        const originalText = button.innerText;
+        button.innerText = "⏳ 正在同步...";
         button.disabled = true;
 
         const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
-        // 将数据转换为 JSON 并进行 Base64 编码 (GitHub API 规则)
         const content = btoa(unescape(encodeURIComponent(JSON.stringify(dataList, null, 2))));
 
         try {
             let sha = "";
-            // 先查询云端是否已经有文件，获取旧文件的 SHA 码用于覆盖
             const getRes = await fetch(apiUrl, {
                 headers: { "Authorization": `token ${userToken}` }
             });
+
+            // 如果返回 401，说明存的 Token 错了或过期了
+            if (getRes.status === 401) {
+                localStorage.removeItem('github_token'); // 清除错误的 Token
+                alert("❌ 通行证无效或已过期，请重新点击备份并输入正确的 Token。");
+                return;
+            }
+
             if (getRes.ok) {
                 const fileData = await getRes.json();
                 sha = fileData.sha; 
             }
 
-            // 发起 PUT 请求推送新数据
             const bodyData = {
-                message: `更新施工台账数据 - ${new Date().toLocaleString()}`,
+                message: `施工数据同步 - ${new Date().toLocaleString()}`,
                 content: content
             };
             if (sha) bodyData.sha = sha; 
@@ -403,15 +420,15 @@
             });
 
             if (putRes.ok) {
-                alert("✅ 成功！数据已安全备份到 GitHub 仓库！");
+                alert("✅ 云端同步成功！");
             } else {
-                throw new Error("推送失败，状态码: " + putRes.status);
+                throw new Error("推送失败");
             }
         } catch (error) {
-            alert("❌ 上传云端失败！\n可能原因：网络不通，或 GitHub Token 权限不正确。");
+            alert("❌ 同步失败，请检查网络。");
             console.error(error);
         } finally {
-            button.innerText = "☁️ 备份数据至互联网 (GitHub)";
+            button.innerText = originalText;
             button.disabled = false;
         }
     }
