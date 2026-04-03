@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>国道512线 TJ-03标段 - 施工数据管理系统</title>
+    <title>国道512线 TJ-03标段 - 施工数据云管理系统</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
@@ -24,10 +24,15 @@
         input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         button { background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         button:hover { background-color: #2980b9; }
-        .btn-export { background-color: #27ae60; margin-bottom: 10px; float: right; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        
+        /* 特殊按钮颜色 */
+        .btn-export { background-color: #27ae60; float: right; margin-left: 10px; margin-bottom: 10px; }
         .btn-export:hover { background-color: #219653; }
         .btn-danger { background-color: #e74c3c; float: left; margin-bottom: 10px;}
         .btn-danger:hover { background-color: #c0392b; }
+        .btn-cloud { background-color: #8e44ad; float: left; margin-left: 10px; margin-bottom: 10px;}
+        .btn-cloud:hover { background-color: #732d91; }
         .clearfix::after { content: ""; clear: both; display: table; }
 
         /* 表格样式 */
@@ -45,7 +50,7 @@
 <body>
 
 <div class="container">
-    <h1>国道512线 TJ-03标段 - 施工数据管理系统</h1>
+    <h1>国道512线 TJ-03标段 - 施工数据云管理系统</h1>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('entryTab', this)">📝 每日填报流水</button>
@@ -60,7 +65,7 @@
                 <label>工程大类</label>
                 <select id="categorySelect" onchange="updateItems()">
                     <option value="">-- 请选择大类 --</option>
-                    </select>
+                </select>
             </div>
             <div class="form-item">
                 <label>细分工序</label>
@@ -78,7 +83,8 @@
         </div>
 
         <div class="clearfix">
-            <button class="btn-danger" onclick="clearData()">⚠️ 清空本地所有数据</button>
+            <button class="btn-danger" onclick="clearData()">⚠️ 清空本地数据</button>
+            <button id="cloudBtn" class="btn-cloud" onclick="saveToCloud()">☁️ 备份数据至互联网 (GitHub)</button>
             <button class="btn-export" onclick="exportExcel('dataTable', '施工流水报表')">⬇️ 导出流水 Excel</button>
         </div>
         
@@ -108,7 +114,14 @@
 </div>
 
 <script>
-    // 1. 底层标准数据库（包含图纸总量）严格对照字典版
+    // ================= GitHub 云端配置区 =================
+    // 请在此处修改为您自己的 GitHub 账号和仓库名
+    const GITHUB_USER = "LVXY2020"; 
+    const GITHUB_REPO = "tj03-database"; 
+    const FILE_PATH = "tj03_data.json"; 
+    // =====================================================
+
+    // 1. 底层标准数据库（全量版严格字典）
     const projectDict = {
         "1. 路基及处理工程": [
             { name: "清表数量", unit: "m³", total: 9032.2 },
@@ -213,7 +226,7 @@
     let dataList = JSON.parse(localStorage.getItem('tj03_data')) || [];
     let recordId = dataList.length > 0 ? Math.max(...dataList.map(d => d.id)) + 1 : 1;
 
-    // 页面加载完毕执行初始化
+    // 页面加载初始化
     window.onload = function() {
         document.getElementById('dateInput').valueAsDate = new Date();
         initCategorySelect();
@@ -221,16 +234,16 @@
         renderSummary();
     };
 
-    // 3. Tab 切换逻辑
+    // 3. Tab 切换
     function switchTab(tabId, btn) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
         btn.classList.add('active');
-        if(tabId === 'summaryTab') renderSummary(); // 切换到台账时重新计算
+        if(tabId === 'summaryTab') renderSummary(); 
     }
 
-    // 4. 级联菜单初始化
+    // 4. 级联菜单
     function initCategorySelect() {
         const catSelect = document.getElementById("categorySelect");
         for(let key in projectDict) {
@@ -261,7 +274,7 @@
         document.getElementById("unitDisplay").textContent = selectedOpt ? selectedOpt.getAttribute("data-unit") : "单位";
     }
 
-    // 5. 增删查改逻辑
+    // 5. 增删本地数据 (含密码锁定清除)
     function addData() {
         const date = document.getElementById("dateInput").value;
         const station = document.getElementById("startStation").value;
@@ -276,23 +289,24 @@
         }
 
         dataList.push({ id: recordId++, date, station, category, item, qty: qty, unit, timestamp: new Date().toLocaleTimeString() });
-        
-        // 核心：持久化保存到浏览器本地
         localStorage.setItem('tj03_data', JSON.stringify(dataList));
         
         document.getElementById("qtyInput").value = ""; 
         renderTable();
-        renderSummary(); // 同时更新后台账
-        alert("录入成功！数据已保存在本地。");
+        renderSummary(); 
     }
 
     function clearData() {
-        if(confirm("危险操作：这会清空您浏览器中记录的所有流水数据，无法恢复！确定清空吗？")) {
+        const pwd = prompt("⚠️ 危险操作：清空本地数据需要管理员权限。\n请输入清除密码：");
+        if (pwd === "888888") { 
             localStorage.removeItem('tj03_data');
             dataList = [];
             recordId = 1;
             renderTable();
             renderSummary();
+            alert("✅ 数据已成功清空！");
+        } else if (pwd !== null) {
+            alert("❌ 密码错误，您没有权限清空数据！");
         }
     }
 
@@ -300,20 +314,17 @@
     function renderTable() {
         const tbody = document.getElementById("tableBody");
         tbody.innerHTML = ""; 
-        // 倒序展示，最新的在上面
         [...dataList].reverse().forEach(row => {
             tbody.innerHTML += `<tr><td>${row.id}</td><td>${row.date}</td><td>${row.station}</td><td>${row.category}</td><td>${row.item}</td><td class="text-green">${row.qty.toFixed(2)}</td><td>${row.unit}</td><td>${row.timestamp}</td></tr>`;
         });
     }
 
-    // 7. 渲染汇总台账 (后台自动算账核心引擎)
     function renderSummary() {
         const tbody = document.getElementById("summaryBody");
         tbody.innerHTML = "";
         
         for (let category in projectDict) {
             projectDict[category].forEach(dictItem => {
-                // 计算当前工序已完成的累加和
                 let completedSum = dataList
                     .filter(data => data.item === dictItem.name)
                     .reduce((sum, data) => sum + parseFloat(data.qty), 0);
@@ -321,8 +332,6 @@
                 let totalStr = dictItem.total !== null ? dictItem.total : "待定";
                 let remainStr = dictItem.total !== null ? (dictItem.total - completedSum).toFixed(2) : "-";
                 let percentStr = dictItem.total !== null && dictItem.total > 0 ? ((completedSum / dictItem.total) * 100).toFixed(1) + "%" : "-";
-                
-                // 预警色：如果剩余为负数（超了），变红
                 let remainClass = dictItem.total !== null && (dictItem.total - completedSum) < 0 ? "text-red" : "";
 
                 tbody.innerHTML += `
@@ -340,12 +349,71 @@
         }
     }
 
-    // 8. 导出功能
+    // 7. 导出 Excel
     function exportExcel(tableId, fileNameBase) {
         let tableElement = document.getElementById(tableId);
         let workbook = XLSX.utils.table_to_book(tableElement, {sheet: "Data"});
         let today = new Date().toISOString().split('T')[0];
         XLSX.writeFile(workbook, `G512_TJ03_${fileNameBase}_${today}.xlsx`);
+    }
+
+    // 8. GitHub 云端同步模块
+    async function saveToCloud() {
+        if (dataList.length === 0) {
+            alert("没有数据可以上传！"); return;
+        }
+
+        // 核心安全机制：弹出 Token 输入框，不在代码中泄露
+        const userToken = prompt("☁️ 数据将同步至 GitHub 仓库。\n请输入您的 Personal Access Token 进行身份验证：\n(如取消则不上传)");
+        if (!userToken) return;
+
+        const button = document.getElementById('cloudBtn');
+        button.innerText = "⏳ 正在上传至云端...";
+        button.disabled = true;
+
+        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+        // 将数据转换为 JSON 并进行 Base64 编码 (GitHub API 规则)
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(dataList, null, 2))));
+
+        try {
+            let sha = "";
+            // 先查询云端是否已经有文件，获取旧文件的 SHA 码用于覆盖
+            const getRes = await fetch(apiUrl, {
+                headers: { "Authorization": `token ${userToken}` }
+            });
+            if (getRes.ok) {
+                const fileData = await getRes.json();
+                sha = fileData.sha; 
+            }
+
+            // 发起 PUT 请求推送新数据
+            const bodyData = {
+                message: `更新施工台账数据 - ${new Date().toLocaleString()}`,
+                content: content
+            };
+            if (sha) bodyData.sha = sha; 
+
+            const putRes = await fetch(apiUrl, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `token ${userToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(bodyData)
+            });
+
+            if (putRes.ok) {
+                alert("✅ 成功！数据已安全备份到 GitHub 仓库！");
+            } else {
+                throw new Error("推送失败，状态码: " + putRes.status);
+            }
+        } catch (error) {
+            alert("❌ 上传云端失败！\n可能原因：网络不通，或 GitHub Token 权限不正确。");
+            console.error(error);
+        } finally {
+            button.innerText = "☁️ 备份数据至互联网 (GitHub)";
+            button.disabled = false;
+        }
     }
 </script>
 
