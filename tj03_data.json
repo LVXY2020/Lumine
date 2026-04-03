@@ -28,5 +28,15 @@
     "qty": 12,
     "unit": "m",
     "timestamp": "20:11:24"
+  },
+  {
+    "id": 4,
+    "date": "2026-04-03",
+    "station": "K29",
+    "category": "1. 路基及处理工程",
+    "item": "清表数量",
+    "qty": 333,
+    "unit": "m³",
+    "timestamp": "20:13:22"
   }
 ]
