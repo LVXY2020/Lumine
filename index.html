@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>国道512线 TJ-03标段 - 施工云数据终端</title>
+    <title>国道512线 TJ-03标段 - 施工云管理系统 V3.0</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 1300px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; font-size: 24px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
         
         .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
@@ -16,38 +16,35 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .form-group { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; background: #e8f4f8; padding: 15px; border-radius: 6px; border: 1px solid #d4e6f1; }
-        .form-item { flex: 1; min-width: 150px; display: flex; flex-direction: column; }
-        label { margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #2c3e50; }
+        .form-group { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; background: #e8f4f8; padding: 15px; border-radius: 6px; border: 1px solid #d4e6f1; }
+        .form-item { flex: 1; min-width: 140px; display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: bold; font-size: 13px; color: #2c3e50; }
         input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         
-        /* 核心按钮样式 */
+        /* 自定义输入框样式 */
+        .custom-box { background: #fffbe6; border: 1px solid #ffe58f !important; margin-top: 5px; display: none; }
+
         .btn-group { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;}
         button { padding: 9px 16px; font-size: 14px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; color: white; }
         .btn-add { background-color: #3498db; }
-        .btn-upload { background-color: #8e44ad; } /* 上传至云端 */
-        .btn-export { background-color: #27ae60; } /* 导出 */
-        .btn-danger { background-color: #e74c3c; } /* 本地清空 */
-        .btn-refresh { background-color: #f39c12; } /* 刷新云端 */
+        .btn-upload { background-color: #8e44ad; }
+        .btn-export { background-color: #27ae60; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-refresh { background-color: #f39c12; }
         button:hover { opacity: 0.8; }
-        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
 
         .section-title { font-size: 16px; font-weight: bold; color: #2c3e50; border-left: 4px solid #3498db; padding-left: 8px; margin: 20px 0 10px 0; display: flex; justify-content: space-between; align-items: center;}
         
-        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
         th { background-color: #34495e; color: white; position: sticky; top: 0; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .text-red { color: #e74c3c; font-weight: bold; }
         .text-green { color: #27ae60; font-weight: bold; }
         .text-blue { color: #2980b9; font-weight: bold; }
         
-        /* 表格容器隔离 */
-        .local-table-container { max-height: 250px; overflow-y: auto; border: 2px dashed #bdc3c7; border-radius: 4px; }
-        .cloud-table-container { max-height: 350px; overflow-y: auto; border: 2px solid #8e44ad; border-radius: 4px; }
-        .summary-table-container { max-height: 600px; overflow-y: auto; }
-        
-        /* 状态指示灯 */
+        .local-table-container { max-height: 200px; overflow-y: auto; border: 1px dashed #bdc3c7; }
+        .cloud-table-container { max-height: 400px; overflow-y: auto; border: 1px solid #8e44ad; }
         .status-dot { height: 10px; width: 10px; background-color: #e74c3c; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .status-dot.online { background-color: #2ecc71; }
     </style>
@@ -55,27 +52,50 @@
 <body>
 
 <div class="container">
-    <h1>国道512线 TJ-03标段 - 施工云数据终端</h1>
+    <h1>国道512线 TJ-03标段 - 施工云管理系统 V3.0</h1>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('entryTab', this)">📝 数据录入中心</button>
-        <button class="tab-btn" onclick="switchTab('summaryTab', this)">📊 云端总台账 <span id="cloudStatus" title="云端连接状态" class="status-dot"></span></button>
+        <button class="tab-btn" onclick="switchTab('summaryTab', this)">📊 云端总台账 <span id="cloudStatus" class="status-dot"></span></button>
     </div>
 
     <div id="entryTab" class="tab-content active">
         <div class="form-group">
             <div class="form-item"><label>日期</label><input type="date" id="dateInput"></div>
+            <div class="form-item"><label>填表人</label><input type="text" id="reporterInput" placeholder="请输入姓名"></div>
             <div class="form-item"><label>起讫桩号</label><input type="text" id="startStation" placeholder="如 K29+050"></div>
-            <div class="form-item"><label>大类</label><select id="categorySelect" onchange="updateItems()"></select></div>
-            <div class="form-item"><label>细分工序</label><select id="itemSelect" onchange="updateUnit()"></select></div>
-            <div class="form-item"><label>完成量 (<span id="unitDisplay" class="text-red">单位</span>)</label><input type="number" id="qtyInput"></div>
+            
+            <div class="form-item">
+                <label>工程大类</label>
+                <select id="categorySelect" onchange="handleCategoryChange()">
+                    <option value="">-- 请选择 --</option>
+                </select>
+                <input type="text" id="customCategory" class="custom-box" placeholder="输入新大类名称">
+            </div>
+
+            <div class="form-item">
+                <label>细分工序</label>
+                <select id="itemSelect" onchange="handleItemChange()">
+                    <option value="">-- 请选择 --</option>
+                </select>
+                <input type="text" id="customItem" class="custom-box" placeholder="输入新工序名称">
+            </div>
+
+            <div class="form-item">
+                <label>完成量 (<span id="unitDisplay" class="text-red">单位</span>)</label>
+                <input type="number" id="qtyInput" placeholder="数值">
+                <input type="text" id="customUnit" class="custom-box" placeholder="输入单位(如:米)">
+            </div>
+
+            <div class="form-item" style="flex: 1.5;"><label>备注</label><input type="text" id="remarksInput" placeholder="选填：施工情况说明"></div>
+            
             <div class="form-item" style="justify-content: flex-end; flex: 0.5;">
                 <button class="btn-add" onclick="addData()">+ 暂存本地</button>
             </div>
         </div>
 
         <div class="section-title">
-            <span>💾 本地待上传流水 (草稿区)</span>
+            <span>💾 本地待上传流水 (填表人 & 备注已增加)</span>
             <div class="btn-group" style="margin-bottom: 0;">
                 <button class="btn-danger" onclick="clearLocalData()">🗑️ 清空本地</button>
                 <button id="uploadBtn" class="btn-upload" onclick="uploadToCloud()">⬆️ 合并上传至云端</button>
@@ -83,13 +103,13 @@
         </div>
         <div class="local-table-container">
             <table id="localTable">
-                <thead><tr><th>日期</th><th>桩号</th><th>大类</th><th>工序</th><th>数量</th><th>单位</th></tr></thead>
+                <thead><tr><th>日期</th><th>填表人</th><th>桩号</th><th>工序名称</th><th>数量</th><th>单位</th><th>备注</th></tr></thead>
                 <tbody id="localBody"></tbody>
             </table>
         </div>
 
         <div class="section-title" style="margin-top: 30px; border-left-color: #8e44ad;">
-            <span>☁️ 云端全部历史流水 (只读)</span>
+            <span>☁️ 云端历史流水 (包含全部填报明细)</span>
             <div class="btn-group" style="margin-bottom: 0;">
                 <button class="btn-refresh" onclick="fetchCloudData()">🔄 刷新云端</button>
                 <button class="btn-export" onclick="exportExcel('cloudTable', '全线施工云端流水明细')">⬇️ 导出全部云端流水</button>
@@ -97,7 +117,7 @@
         </div>
         <div class="cloud-table-container">
             <table id="cloudTable">
-                <thead><tr><th>上传批次</th><th>日期</th><th>桩号</th><th>大类</th><th>工序</th><th>数量</th><th>单位</th></tr></thead>
+                <thead><tr><th>批次</th><th>日期</th><th>填表人</th><th>桩号</th><th>大类</th><th>工序</th><th>数量</th><th>单位</th><th>备注</th></tr></thead>
                 <tbody id="cloudBody"></tbody>
             </table>
         </div>
@@ -105,11 +125,11 @@
 
     <div id="summaryTab" class="tab-content">
         <div class="btn-group" style="justify-content: flex-end;">
-            <button class="btn-export" onclick="exportExcel('summaryTable', '云端工程量汇总台账')">⬇️ 导出云端台账 Excel</button>
+            <button class="btn-export" onclick="exportExcel('summaryTable', '云端汇总台账')">⬇️ 导出云端台账 Excel</button>
         </div>
-        <div class="summary-table-container">
+        <div class="table-container">
             <table id="summaryTable">
-                <thead><tr><th>大类</th><th>工序</th><th>单位</th><th>图纸总量</th><th>累计已完成(云)</th><th>剩余量</th><th>进度%</th></tr></thead>
+                <thead><tr><th>大类</th><th>工序</th><th>单位</th><th>设计总量</th><th>已完成(云)</th><th>剩余量</th><th>进度%</th></tr></thead>
                 <tbody id="summaryBody"></tbody>
             </table>
         </div>
@@ -117,12 +137,11 @@
 </div>
 
 <script>
-    // ======= 云端对接配置 =======
+    // ======= 配置 =======
     const GITHUB_USER = "LVXY2020"; 
     const GITHUB_REPO = "Lumine";    
     const FILE_PATH = "tj03_data.json"; 
 
-    // 全量字典与图纸总量
     const projectDict = {
         "1. 路基及处理工程": [
             { name: "清表数量", unit: "m³", total: 9032.2 },
@@ -178,7 +197,6 @@
             { name: "C25现浇砼", unit: "m³", total: 1343.3 },
             { name: "HRB400钢筋", unit: "kg", total: 46333.9 },
             { name: "沥青麻絮", unit: "m²", total: 0.6 },
-            { name: "C25混凝土拦水带", unit: "m³", total: null },
             { name: "占地", unit: "亩", total: 0.06 }
         ],
         "5. 拆除工程": [
@@ -204,12 +222,10 @@
             { name: "桥面防水层", unit: "m²", total: 5357 },
             { name: "桥面沥青混凝土", unit: "m³", total: 482 },
             { name: "声测管 (各管径合计)", unit: "kg", total: 25409 },
-            { name: "泄水管及配件 (含铸铁/PVC/管件)", unit: "套/m/kg", total: null },
             { name: "锥坡开挖 / 桥台挖方", unit: "m³", total: 1215 },
             { name: "锥坡C25砼护坡及基础", unit: "m³", total: 966 },
             { name: "锥坡未筛分碎石 (垫层/填筑)", unit: "m³", total: 2466 },
-            { name: "聚丙烯纤维 / 玻纤格栅", unit: "kg", total: 493 },
-            { name: "橡胶垫块 / 油毛毡 / 土工布", unit: "dm³/m²/m²", total: null }
+            { name: "聚丙烯纤维 / 玻纤格栅", unit: "kg", total: 493 }
         ],
         "7. 涵洞工程": [
             { name: "涵洞干挖 / 清理土方", unit: "m³", total: 268.8 },
@@ -218,33 +234,159 @@
             { name: "C30混凝土 (涵身/基础/铺砌)", unit: "m³", total: 107.7 },
             { name: "C40混凝土 (现浇明板)", unit: "m³", total: 10.1 },
             { name: "涵洞受力钢筋 (HRB400等合计)", unit: "kg", total: 4922 },
-            { name: "1cm厚橡胶垫", unit: "m²", total: 9.1 },
-            { name: "支座锚栓 (Φ25)", unit: "kg", total: null }
+            { name: "1cm厚橡胶垫", unit: "m²", total: 9.1 }
         ]
     };
 
-    // 数据双轨制：本地草稿 vs 云端事实
-    let localDataList = JSON.parse(localStorage.getItem('tj03_local_draft')) || [];
-    let cloudDataList = []; 
+    let localDataList = JSON.parse(localStorage.getItem('tj03_local_v3')) || [];
+    let cloudDataList = [];
 
     window.onload = function() {
         document.getElementById('dateInput').valueAsDate = new Date();
         initCategorySelect();
         renderLocalTable();
-        // 初始化时自动静默拉取一次云端数据
-        if(localStorage.getItem('github_token')) {
-            fetchCloudData(true);
-        }
+        if(localStorage.getItem('github_token')) fetchCloudData(true);
     };
 
-    // --- 核心网络层：只读抓取 ---
+    // --- 自定义输入逻辑 ---
+    function initCategorySelect() {
+        const cat = document.getElementById("categorySelect");
+        cat.innerHTML = '<option value="">-- 请选择 --</option>';
+        for(let key in projectDict) {
+            let opt = document.createElement("option");
+            opt.value = key; opt.textContent = key;
+            cat.appendChild(opt);
+        }
+        let customOpt = document.createElement("option");
+        customOpt.value = "CUSTOM"; customOpt.textContent = " [➕ 自定义大类...]";
+        cat.appendChild(customOpt);
+        updateItems();
+    }
+
+    function handleCategoryChange() {
+        const cat = document.getElementById("categorySelect").value;
+        const customBox = document.getElementById("customCategory");
+        customBox.style.display = (cat === "CUSTOM") ? "block" : "none";
+        updateItems();
+    }
+
+    function updateItems() {
+        const cat = document.getElementById("categorySelect").value;
+        const itemS = document.getElementById("itemSelect");
+        itemS.innerHTML = '<option value="">-- 请选择 --</option>';
+        
+        if (cat !== "CUSTOM" && projectDict[cat]) {
+            projectDict[cat].forEach(i => {
+                let opt = document.createElement("option");
+                opt.value = i.name; opt.textContent = i.name;
+                opt.setAttribute("data-unit", i.unit);
+                itemS.appendChild(opt);
+            });
+        }
+        let customOpt = document.createElement("option");
+        customOpt.value = "CUSTOM"; customOpt.textContent = " [➕ 自定义工序...]";
+        itemS.appendChild(customOpt);
+        handleItemChange();
+    }
+
+    function handleItemChange() {
+        const itemVal = document.getElementById("itemSelect").value;
+        document.getElementById("customItem").style.display = (itemVal === "CUSTOM") ? "block" : "none";
+        document.getElementById("customUnit").style.display = (itemVal === "CUSTOM") ? "block" : "none";
+        updateUnit();
+    }
+
+    function updateUnit() {
+        const itemSelect = document.getElementById("itemSelect");
+        const selectedOpt = itemSelect.options[itemSelect.selectedIndex];
+        const unitDisplay = document.getElementById("unitDisplay");
+        if (itemSelect.value === "CUSTOM") {
+            unitDisplay.textContent = "手动输入单位";
+        } else {
+            unitDisplay.textContent = selectedOpt?.getAttribute("data-unit") || "单位";
+        }
+    }
+
+    // --- 数据操作 ---
+    function addData() {
+        const date = document.getElementById("dateInput").value;
+        const reporter = document.getElementById("reporterInput").value;
+        const qty = parseFloat(document.getElementById("qtyInput").value);
+        
+        let category = document.getElementById("categorySelect").value;
+        if(category === "CUSTOM") category = document.getElementById("customCategory").value;
+
+        let item = document.getElementById("itemSelect").value;
+        let unit = document.getElementById("unitDisplay").textContent;
+        if(item === "CUSTOM") {
+            item = document.getElementById("customItem").value;
+            unit = document.getElementById("customUnit").value;
+        }
+
+        if(!date || !reporter || isNaN(qty) || !category || !item) {
+            alert("请完整填写：日期、填表人、分类、工序及数量！"); return;
+        }
+
+        localDataList.push({
+            date, reporter, category, item, qty, unit,
+            station: document.getElementById("startStation").value,
+            remarks: document.getElementById("remarksInput").value
+        });
+
+        localStorage.setItem('tj03_local_v3', JSON.stringify(localDataList));
+        document.getElementById("qtyInput").value = "";
+        document.getElementById("remarksInput").value = "";
+        renderLocalTable();
+    }
+
+    // --- 同步逻辑 (Append Only) ---
+    async function uploadToCloud() {
+        if(localDataList.length === 0) { alert("无本地草稿。"); return; }
+        let token = localStorage.getItem('github_token') || prompt("输入 Token：");
+        if(!token) return;
+
+        const btn = document.getElementById('uploadBtn');
+        btn.innerText = "⏳ 正在同步数据库...";
+        btn.disabled = true;
+
+        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+        try {
+            let sha = "";
+            let currentCloud = [];
+            const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
+            if(getRes.ok) {
+                const json = await getRes.json();
+                sha = json.sha;
+                currentCloud = JSON.parse(decodeURIComponent(escape(atob(json.content))));
+            }
+
+            const batchId = new Date().toLocaleString();
+            const newData = localDataList.map(x => ({...x, batch: batchId}));
+            const combined = currentCloud.concat(newData);
+
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(combined, null, 2))));
+            const putRes = await fetch(url, {
+                method: "PUT",
+                headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ message: `Update ${batchId}`, content: content, sha: sha })
+            });
+
+            if(putRes.ok) {
+                localStorage.setItem('github_token', token);
+                localDataList = [];
+                localStorage.removeItem('tj03_local_v3');
+                cloudDataList = combined;
+                renderLocalTable(); renderCloudTable(); renderSummary();
+                alert("✅ 云端数据库已增量更新！");
+            }
+        } catch (e) { alert("同步失败。"); }
+        finally { btn.innerText = "⬆️ 合并上传至云端"; btn.disabled = false; }
+    }
+
     async function fetchCloudData(isSilent = false) {
         let token = localStorage.getItem('github_token');
-        if(!token) {
-            if(isSilent) return;
-            token = prompt("请输入 Token 获取云端记录：");
-            if(!token) return;
-        }
+        if(!token && isSilent) return;
+        if(!token) token = prompt("输入 Token：");
 
         const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
         try {
@@ -253,184 +395,62 @@
                 const json = await res.json();
                 cloudDataList = JSON.parse(decodeURIComponent(escape(atob(json.content))));
                 localStorage.setItem('github_token', token);
-                
-                // 更新指示灯
                 document.getElementById('cloudStatus').classList.add('online');
-                renderCloudTable();
-                renderSummary(); // 台账只通过云端数据计算！
-                
-                if(!isSilent) alert(`成功从云端读取 ${cloudDataList.length} 条记录！台账已更新。`);
-            } else if(res.status === 404) {
-                cloudDataList = [];
-                document.getElementById('cloudStatus').classList.add('online');
-                if(!isSilent) alert("云端目前为空。");
-            } else {
-                if(!isSilent) alert("Token 错误或权限不足。");
+                renderCloudTable(); renderSummary();
             }
-        } catch (e) {
-            document.getElementById('cloudStatus').classList.remove('online');
-            if(!isSilent) alert("网络连接失败。");
-        }
+        } catch (e) { document.getElementById('cloudStatus').classList.remove('online'); }
     }
 
-    // --- 核心网络层：安全追加上传 ---
-    async function uploadToCloud() {
-        if(localDataList.length === 0) { alert("本地没有新增数据可上传！"); return; }
-        
-        let token = localStorage.getItem('github_token') || prompt("请输入 Token 授权上传：");
-        if(!token) return;
-
-        const btn = document.getElementById('uploadBtn');
-        btn.innerText = "⏳ 正在拉取合并...";
-        btn.disabled = true;
-
-        const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
-        
-        try {
-            // 第一步：必须先拉取最新云端数据，防止覆盖别人的提交
-            let sha = "";
-            let latestCloudData = [];
-            const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
-            if(getRes.ok) {
-                const json = await getRes.json();
-                sha = json.sha;
-                latestCloudData = JSON.parse(decodeURIComponent(escape(atob(json.content))));
-            }
-
-            // 第二步：将本地数据合并（Append）到云端数据后面，并打上批次时间戳
-            const uploadBatchId = new Date().toLocaleString();
-            const dataToAppend = localDataList.map(item => ({...item, batch: uploadBatchId}));
-            const combinedData = latestCloudData.concat(dataToAppend);
-
-            // 第三步：推回云端
-            btn.innerText = "⬆️ 正在推送云端...";
-            const content = btoa(unescape(encodeURIComponent(JSON.stringify(combinedData, null, 2))));
-            
-            const putRes = await fetch(url, {
-                method: "PUT",
-                headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: `增量上传 - ${uploadBatchId}`, content: content, sha: sha })
-            });
-
-            if(putRes.ok) {
-                localStorage.setItem('github_token', token);
-                
-                // 上传成功后：本地清空，云端内存更新
-                localDataList = [];
-                localStorage.removeItem('tj03_local_draft');
-                cloudDataList = combinedData; 
-                
-                renderLocalTable();
-                renderCloudTable();
-                renderSummary(); // 触发台账重新计算
-                alert("✅ 上传成功！本地草稿已清空并合并至云端。");
-            } else {
-                alert("上传失败，请检查写入权限。");
-            }
-        } catch (e) {
-            alert("网络异常，上传中断。");
-        } finally {
-            btn.innerText = "⬆️ 合并上传至云端";
-            btn.disabled = false;
-        }
-    }
-
-    // --- 本地与表单操作逻辑 ---
-    function initCategorySelect() {
-        const cat = document.getElementById("categorySelect");
-        for(let key in projectDict) {
-            let opt = document.createElement("option");
-            opt.value = key; opt.textContent = key;
-            cat.appendChild(opt);
-        }
-        updateItems();
-    }
-
-    function updateItems() {
-        const cat = document.getElementById("categorySelect").value;
-        const itemS = document.getElementById("itemSelect");
-        itemS.innerHTML = "";
-        projectDict[cat].forEach(i => {
-            let opt = document.createElement("option");
-            opt.value = i.name; opt.textContent = i.name;
-            opt.setAttribute("data-unit", i.unit);
-            itemS.appendChild(opt);
-        });
-        updateUnit();
-    }
-
-    function updateUnit() {
-        const i = document.getElementById("itemSelect");
-        const u = i.options[i.selectedIndex]?.getAttribute("data-unit");
-        document.getElementById("unitDisplay").textContent = u || "单位";
-    }
-
-    function addData() {
-        const date = document.getElementById("dateInput").value;
-        const qty = parseFloat(document.getElementById("qtyInput").value);
-        if(!date || isNaN(qty)) { alert("请填写日期和有效数量"); return; }
-
-        localDataList.push({
-            date,
-            station: document.getElementById("startStation").value,
-            category: document.getElementById("categorySelect").value,
-            item: document.getElementById("itemSelect").value,
-            qty: qty,
-            unit: document.getElementById("unitDisplay").textContent
-        });
-
-        localStorage.setItem('tj03_local_draft', JSON.stringify(localDataList));
-        document.getElementById("qtyInput").value = "";
-        renderLocalTable();
-    }
-
-    // 此操作现在非常安全，只清空浏览器缓存
     function clearLocalData() {
-        if(confirm("确定要清空本地尚未上传的数据吗？（已上传云端的数据不会受影响）")) {
-            localDataList = [];
-            localStorage.removeItem('tj03_local_draft');
-            renderLocalTable();
+        if(confirm("确定清空本地草稿？")) {
+            localDataList = []; localStorage.removeItem('tj03_local_v3'); renderLocalTable();
         }
     }
 
-    // --- 渲染逻辑 ---
+    // --- 渲染渲染 ---
     function renderLocalTable() {
         const b = document.getElementById("localBody");
         b.innerHTML = "";
-        if(localDataList.length === 0) {
-            b.innerHTML = `<tr><td colspan="6" style="color:#95a5a6;">本地暂无草稿，请在上方录入</td></tr>`;
-            return;
-        }
         [...localDataList].reverse().forEach(r => {
-            b.innerHTML += `<tr><td>${r.date}</td><td>${r.station}</td><td>${r.category}</td><td>${r.item}</td><td class="text-red">+${r.qty}</td><td>${r.unit}</td></tr>`;
+            b.innerHTML += `<tr><td>${r.date}</td><td>${r.reporter}</td><td>${r.station}</td><td>${r.item}</td><td class="text-red">+${r.qty}</td><td>${r.unit}</td><td>${r.remarks}</td></tr>`;
         });
     }
 
     function renderCloudTable() {
         const b = document.getElementById("cloudBody");
         b.innerHTML = "";
-        if(cloudDataList.length === 0) {
-            b.innerHTML = `<tr><td colspan="7" style="color:#95a5a6;">云端暂无数据，请点击上方按钮获取</td></tr>`;
-            return;
-        }
         [...cloudDataList].reverse().forEach(r => {
-            let batchSpan = r.batch ? `<span style="font-size:11px;color:#7f8c8d;">${r.batch}</span>` : '历史记录';
-            b.innerHTML += `<tr><td>${batchSpan}</td><td>${r.date}</td><td>${r.station}</td><td>${r.category}</td><td>${r.item}</td><td class="text-blue">${r.qty}</td><td>${r.unit}</td></tr>`;
+            b.innerHTML += `<tr><td>${r.batch||'-'}</td><td>${r.date}</td><td>${r.reporter}</td><td>${r.station}</td><td>${r.category}</td><td>${r.item}</td><td class="text-blue">${r.qty}</td><td>${r.unit}</td><td>${r.remarks}</td></tr>`;
         });
     }
 
-    // 严谨的云计算：只基于 cloudDataList
     function renderSummary() {
         const b = document.getElementById("summaryBody");
         b.innerHTML = "";
+        
+        // 1. 先渲染字典内的项目
         for(let c in projectDict) {
             projectDict[c].forEach(d => {
                 let sum = cloudDataList.filter(x => x.item === d.name).reduce((a, x) => a + x.qty, 0);
                 let per = d.total ? (sum/d.total*100).toFixed(1) + "%" : "-";
                 let rem = d.total ? (d.total - sum).toFixed(2) : "-";
-                
                 b.innerHTML += `<tr><td>${c}</td><td style="text-align:left">${d.name}</td><td>${d.unit}</td><td>${d.total||'-'}</td><td class="text-blue">${sum.toFixed(2)}</td><td class="${d.total && (d.total-sum)<0?'text-red':''}">${rem}</td><td>${per}</td></tr>`;
             });
+        }
+
+        // 2. 渲染字典外的自定义项目（汇总）
+        const allDictItems = Object.values(projectDict).flat().map(x => x.name);
+        const customItems = cloudDataList.filter(x => !allDictItems.includes(x.item));
+        
+        // 按工序名称聚合
+        const aggregated = {};
+        customItems.forEach(x => {
+            if(!aggregated[x.item]) aggregated[x.item] = { qty: 0, unit: x.unit, cat: x.category };
+            aggregated[x.item].qty += x.qty;
+        });
+
+        for(let name in aggregated) {
+            b.innerHTML += `<tr style="background:#fffbe6;"><td>${aggregated[name].cat}</td><td style="text-align:left">${name} (增)</td><td>${aggregated[name].unit}</td><td style="color:#7f8c8d;">图纸外</td><td class="text-blue">${aggregated[name].qty.toFixed(2)}</td><td>-</td><td>-</td></tr>`;
         }
     }
 
@@ -439,8 +459,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
-        // 每次切到台账，如果有 Token，默默拉取一次保证最新
-        if(id === 'summaryTab' && localStorage.getItem('github_token')) fetchCloudData(true);
+        if(id === 'summaryTab') renderSummary();
     }
 
     function exportExcel(id, name) {
@@ -448,6 +467,5 @@
         XLSX.writeFile(wb, `${name}_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 </script>
-
 </body>
 </html>
